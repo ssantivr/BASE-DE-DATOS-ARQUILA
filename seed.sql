@@ -9,8 +9,8 @@ FROM users
 WHERE email = 'demo@example.com'
 ON CONFLICT (owner_id, name) DO NOTHING;
 
-INSERT INTO terrains (project_id, name, area_m2, slope_percent, soil_type, latitude, longitude)
-SELECT p.id, 'Main Lot', 450.00, 8.50, 'clay', -0.180653, -78.467834
+INSERT INTO terrains (project_id, name, area_m2, width_m, length_m, slope_percent, soil_type, latitude, longitude)
+SELECT p.id, 'Main Lot', 450.00, 15.00, 30.00, 8.50, 'clay', -0.180653, -78.467834
 FROM projects p
 WHERE p.name = 'Demo House'
   AND NOT EXISTS (

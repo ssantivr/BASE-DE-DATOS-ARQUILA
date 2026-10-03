@@ -34,12 +34,17 @@ CREATE TABLE IF NOT EXISTS terrains (
     project_id INTEGER NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
     name VARCHAR(160) NOT NULL,
     area_m2 NUMERIC(12, 2) NOT NULL CHECK (area_m2 > 0),
+    width_m NUMERIC(8, 2) CHECK (width_m > 0),
+    length_m NUMERIC(8, 2) CHECK (length_m > 0),
     slope_percent NUMERIC(5, 2) CHECK (slope_percent >= 0),
     soil_type VARCHAR(80),
     latitude NUMERIC(9, 6) CHECK (latitude BETWEEN -90 AND 90),
     longitude NUMERIC(9, 6) CHECK (longitude BETWEEN -180 AND 180),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE terrains ADD COLUMN IF NOT EXISTS width_m NUMERIC(8, 2) CHECK (width_m > 0);
+ALTER TABLE terrains ADD COLUMN IF NOT EXISTS length_m NUMERIC(8, 2) CHECK (length_m > 0);
 
 CREATE TABLE IF NOT EXISTS files (
     id SERIAL PRIMARY KEY,
