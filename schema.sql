@@ -5,7 +5,19 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- For databases created before authentication was added.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -103,6 +115,7 @@ CREATE TABLE IF NOT EXISTS ai_messages (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_owner_id ON projects (owner_id);
 CREATE INDEX IF NOT EXISTS idx_terrains_project_id ON terrains (project_id);
 CREATE INDEX IF NOT EXISTS idx_files_project_id ON files (project_id);
