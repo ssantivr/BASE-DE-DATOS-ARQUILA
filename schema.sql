@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS recommendations (
     category VARCHAR(80) NOT NULL,
     content TEXT NOT NULL,
     source VARCHAR(10) NOT NULL DEFAULT 'ai'
-        CHECK (source IN ('ai', 'user')),
+        CHECK (source IN ('ai', 'user', 'system')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
