@@ -1,5 +1,3 @@
--- Demo data. Safe to run more than once.
-
 INSERT INTO users (name, email)
 VALUES
     ('Demo User', 'demo@example.com')

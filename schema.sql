@@ -1,6 +1,3 @@
--- ARQUILA core schema (PostgreSQL 16).
--- Keep in sync with backend/app/models.py.
-
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
@@ -9,7 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- For databases created before authentication was added.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS user_sessions (
