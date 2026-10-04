@@ -167,3 +167,141 @@ JOIN plans pl ON pl.project_id = p.id AND pl.title = l.plan
 WHERE NOT EXISTS (
     SELECT 1 FROM structural_components x WHERE x.plan_id = pl.id AND x.name = v.name
 );
+
+INSERT INTO structural_components (project_id, plan_id, kind, name, x_m, y_m, width_m, depth_m, height_m)
+SELECT p.id, pl.id, 'beam', v.name, v.x_m, v.y_m, v.width_m, v.depth_m, 0.4
+FROM (
+    VALUES
+        ('V1', 7, 13, 4, 0.3),
+        ('V2', 7, 15.7, 4, 0.3),
+        ('V3', 7, 13, 0.3, 3),
+        ('V4', 10.7, 13, 0.3, 3)
+) AS v (name, x_m, y_m, width_m, depth_m)
+CROSS JOIN (VALUES ('Planta baja'), ('Planta alta')) AS l (plan)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN plans pl ON pl.project_id = p.id AND pl.title = l.plan
+WHERE NOT EXISTS (
+    SELECT 1 FROM structural_components x WHERE x.plan_id = pl.id AND x.name = v.name
+);
+
+INSERT INTO plans (project_id, title, level, scale)
+SELECT p.id, v.title, v.level, '1:100'
+FROM (
+    VALUES
+        ('Piso 1', '1'),
+        ('Piso 2', '2'),
+        ('Piso 3', '3')
+) AS v (title, level)
+JOIN projects p ON p.name = 'Edificio Mirador'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM plans x WHERE x.project_id = p.id AND x.title = v.title
+);
+
+UPDATE projects p
+SET roof = 'flat'
+FROM users u
+WHERE u.id = p.owner_id
+  AND u.email = 'demo@example.com'
+  AND p.name = 'Edificio Mirador'
+  AND NOT EXISTS (SELECT 1 FROM rooms x WHERE x.project_id = p.id);
+
+INSERT INTO rooms (project_id, plan_id, name, x_m, y_m, width_m, depth_m, height_m)
+SELECT p.id, pl.id, v.name, v.x_m, 1.5, v.width_m, 7.5, v.height_m
+FROM (
+    VALUES
+        ('Planta de locales', 'Local 1', 2, 5, 3.4),
+        ('Planta de locales', 'Vestíbulo', 7, 3, 3.4),
+        ('Planta de locales', 'Escalera y ascensor', 10, 3, 3.4),
+        ('Planta de locales', 'Local 2', 13, 5, 3.4),
+        ('Piso 1', 'Apto. 1A', 2, 5, 2.8),
+        ('Piso 1', 'Circulación', 7, 3, 2.8),
+        ('Piso 1', 'Escalera y ascensor', 10, 3, 2.8),
+        ('Piso 1', 'Apto. 1B', 13, 5, 2.8),
+        ('Piso 2', 'Apto. 2A', 2, 5, 2.8),
+        ('Piso 2', 'Circulación', 7, 3, 2.8),
+        ('Piso 2', 'Escalera y ascensor', 10, 3, 2.8),
+        ('Piso 2', 'Apto. 2B', 13, 5, 2.8),
+        ('Piso 3', 'Apto. 3A', 2, 5, 2.8),
+        ('Piso 3', 'Circulación', 7, 3, 2.8),
+        ('Piso 3', 'Escalera y ascensor', 10, 3, 2.8),
+        ('Piso 3', 'Apto. 3B', 13, 5, 2.8)
+) AS v (plan, name, x_m, width_m, height_m)
+JOIN projects p ON p.name = 'Edificio Mirador'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN plans pl ON pl.project_id = p.id AND pl.title = v.plan
+WHERE NOT EXISTS (
+    SELECT 1 FROM rooms x WHERE x.plan_id = pl.id AND x.name = v.name
+);
+
+INSERT INTO structural_components (project_id, plan_id, kind, name, x_m, y_m, width_m, depth_m, height_m)
+SELECT p.id, pl.id, 'column', v.name, v.x_m, v.y_m, 0.4, 0.4, l.height_m
+FROM (
+    VALUES
+        ('C1', 2, 1.5),
+        ('C2', 9.8, 1.5),
+        ('C3', 17.6, 1.5),
+        ('C4', 17.6, 8.6),
+        ('C5', 9.8, 8.6),
+        ('C6', 2, 8.6)
+) AS v (name, x_m, y_m)
+CROSS JOIN (
+    VALUES
+        ('Planta de locales', 3.4),
+        ('Piso 1', 2.8),
+        ('Piso 2', 2.8),
+        ('Piso 3', 2.8)
+) AS l (plan, height_m)
+JOIN projects p ON p.name = 'Edificio Mirador'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN plans pl ON pl.project_id = p.id AND pl.title = l.plan
+WHERE NOT EXISTS (
+    SELECT 1 FROM structural_components x WHERE x.plan_id = pl.id AND x.name = v.name
+);
+
+INSERT INTO materials (project_id, name, category, unit, quantity, unit_cost)
+SELECT p.id, v.name, v.category, v.unit, v.quantity, v.unit_cost
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'Puerta de madera', 'Carpintería', 'u', 12, 185),
+        ('Casa Los Arrayanes', 'Cerámica de baño', 'Acabados', 'm²', 38, 14.6),
+        ('Casa Los Arrayanes', 'Tubería PVC de 110 mm', 'Instalaciones', 'm', 85, 5.2),
+        ('Casa Los Arrayanes', 'Cable eléctrico n.º 12', 'Instalaciones', 'm', 640, 0.85),
+        ('Edificio Mirador', 'Bloque de 20 cm', 'Mampostería', 'u', 14500, 0.68),
+        ('Edificio Mirador', 'Vidrio templado 8 mm', 'Carpintería', 'm²', 180, 62),
+        ('Edificio Mirador', 'Porcelanato 60×60', 'Acabados', 'm²', 480, 21.5),
+        ('Edificio Mirador', 'Impermeabilizante de losa', 'Cubierta', 'm²', 130, 9.4),
+        ('Edificio Mirador', 'Tubería PVC de 110 mm', 'Instalaciones', 'm', 320, 5.2)
+) AS v (project, name, category, unit, quantity, unit_cost)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+ON CONFLICT (project_id, name) DO NOTHING;
+
+INSERT INTO elevations (project_id, title, orientation)
+SELECT p.id, v.title, v.orientation
+FROM (
+    VALUES
+        ('Edificio Mirador', 'Fachada norte', 'north'),
+        ('Edificio Mirador', 'Fachada al lote vecino', 'west')
+) AS v (project, title, orientation)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM elevations x WHERE x.project_id = p.id AND x.title = v.title
+);
+
+INSERT INTO recommendations (project_id, category, content, source)
+SELECT p.id, v.category, v.content, 'user'
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'Estructura', 'Las columnas del patio central reciben la losa de la planta alta: revisar su sección con el ingeniero estructural.'),
+        ('Casa Los Arrayanes', 'Ventilación', 'El patio central permite ventilación cruzada: mantener ventanas enfrentadas en la sala y el comedor.'),
+        ('Edificio Mirador', 'Estructura', 'El lote tiene una pendiente pronunciada: el muro de contención del lado alto debe diseñarse con el estudio de suelos.'),
+        ('Edificio Mirador', 'Normativa', 'Verificar con el municipio la altura máxima y los retiros que aplican a un lote esquinero.')
+) AS v (project, category, content)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM recommendations x WHERE x.project_id = p.id AND x.content = v.content
+);
