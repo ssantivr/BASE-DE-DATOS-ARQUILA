@@ -117,3 +117,53 @@ JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
 WHERE NOT EXISTS (
     SELECT 1 FROM recommendations x WHERE x.project_id = p.id AND x.content = v.content
 );
+
+INSERT INTO rooms (project_id, plan_id, name, x_m, y_m, width_m, depth_m, height_m)
+SELECT p.id, pl.id, v.name, v.x_m, v.y_m, v.width_m, v.depth_m, 2.8
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'Planta baja', 'Garaje', 3, 8, 5.5, 5),
+        ('Casa Los Arrayanes', 'Planta baja', 'Hall', 8.5, 8, 2, 5),
+        ('Casa Los Arrayanes', 'Planta baja', 'Sala', 10.5, 8, 4.5, 5),
+        ('Casa Los Arrayanes', 'Planta baja', 'Cocina', 3, 13, 4, 3),
+        ('Casa Los Arrayanes', 'Planta baja', 'Comedor', 11, 13, 4, 3),
+        ('Casa Los Arrayanes', 'Planta baja', 'Lavandería', 3, 16, 3, 4),
+        ('Casa Los Arrayanes', 'Planta baja', 'Baño social', 6, 16, 2, 4),
+        ('Casa Los Arrayanes', 'Planta baja', 'Escalera', 8, 16, 2.5, 4),
+        ('Casa Los Arrayanes', 'Planta baja', 'Estudio', 10.5, 16, 4.5, 4),
+        ('Casa Los Arrayanes', 'Planta alta', 'Hab. principal', 3, 8, 5.5, 5),
+        ('Casa Los Arrayanes', 'Planta alta', 'Estar íntimo', 8.5, 8, 2, 5),
+        ('Casa Los Arrayanes', 'Planta alta', 'Habitación 2', 10.5, 8, 4.5, 5),
+        ('Casa Los Arrayanes', 'Planta alta', 'Baño principal', 3, 13, 4, 3),
+        ('Casa Los Arrayanes', 'Planta alta', 'Baño', 11, 13, 4, 3),
+        ('Casa Los Arrayanes', 'Planta alta', 'Habitación 3', 3, 16, 5, 4),
+        ('Casa Los Arrayanes', 'Planta alta', 'Escalera', 8, 16, 2.5, 4),
+        ('Casa Los Arrayanes', 'Planta alta', 'Habitación 4', 10.5, 16, 4.5, 4)
+) AS v (project, plan, name, x_m, y_m, width_m, depth_m)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN plans pl ON pl.project_id = p.id AND pl.title = v.plan
+WHERE NOT EXISTS (
+    SELECT 1 FROM rooms x WHERE x.plan_id = pl.id AND x.name = v.name
+);
+
+INSERT INTO structural_components (project_id, plan_id, kind, name, x_m, y_m, width_m, depth_m, height_m)
+SELECT p.id, pl.id, 'column', v.name, v.x_m, v.y_m, 0.3, 0.3, 2.8
+FROM (
+    VALUES
+        ('C1', 3, 8),
+        ('C2', 14.7, 8),
+        ('C3', 14.7, 19.7),
+        ('C4', 3, 19.7),
+        ('C5', 7, 13),
+        ('C6', 10.7, 13),
+        ('C7', 10.7, 15.7),
+        ('C8', 7, 15.7)
+) AS v (name, x_m, y_m)
+CROSS JOIN (VALUES ('Planta baja'), ('Planta alta')) AS l (plan)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN plans pl ON pl.project_id = p.id AND pl.title = l.plan
+WHERE NOT EXISTS (
+    SELECT 1 FROM structural_components x WHERE x.plan_id = pl.id AND x.name = v.name
+);
