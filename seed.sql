@@ -1,5 +1,5 @@
 INSERT INTO users (name, email, password_hash)
-VALUES ('Demo User', 'demo@example.com', 'scrypt$e7d8db034d215c98a328b6b379c27404$bcca7ea05c571ff1d7986e65601d6826338c6d69b560defddfbe2eef2229366e')
+VALUES ('Demo User', 'demo@example.com', '$argon2id$v=19$m=65536,t=3,p=4$NpZv9xU4YHWPCPZnTY95Zw$O09hjiydM0i5bipHRfIgMAyOL4W/ugT9aFmubWaCICs')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO projects (owner_id, name, description, location, status)
