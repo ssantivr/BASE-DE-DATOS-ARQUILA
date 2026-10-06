@@ -33,6 +33,7 @@ scripts/init.sh Crea el esquema desde cero sin necesidad del backend
 | `007_recommendation_priority.sql` | Prioridad de las recomendaciones. |
 | `008_element_surfaces.sql` | Materiales de superficie de cuartos y componentes. |
 | `009_project_roof.sql` | Cubierta del proyecto. |
+| `010_file_contents.sql` | Contenido de los archivos, para cuando el backend no puede guardarlos en disco. |
 
 ## Estructura general
 
@@ -45,7 +46,7 @@ users
 └── projects
     ├── terrains ── terrain_points
     ├── materials
-    ├── files
+    ├── files ── file_contents
     ├── plans ─────────────┬── rooms
     │                      └── structural_components
     ├── elevations

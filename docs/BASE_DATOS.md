@@ -21,7 +21,8 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 006_structural_components.sql
 │   ├── 007_recommendation_priority.sql
 │   ├── 008_element_surfaces.sql
-│   └── 009_project_roof.sql
+│   ├── 009_project_roof.sql
+│   └── 010_file_contents.sql
 └── seed.sql
 ```
 
@@ -51,6 +52,7 @@ erDiagram
     files |o--o{ plans : "se adjunta a"
     files |o--o{ elevations : "se adjunta a"
     ai_conversations ||--o{ ai_messages : "contiene"
+    files ||--o| file_contents : "guarda su contenido en"
 
     users {
         int id PK
@@ -108,6 +110,11 @@ erDiagram
         string storage_path
         string mime_type
         bigint size_bytes
+    }
+
+    file_contents {
+        int file_id PK, FK
+        bytea data
     }
     plans {
         int id PK
