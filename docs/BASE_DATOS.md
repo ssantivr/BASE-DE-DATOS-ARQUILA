@@ -22,7 +22,8 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 007_recommendation_priority.sql
 │   ├── 008_element_surfaces.sql
 │   ├── 009_project_roof.sql
-│   └── 010_file_contents.sql
+│   ├── 010_file_contents.sql
+│   └── 011_runtime_state.sql
 └── seed.sql
 ```
 
@@ -193,6 +194,7 @@ erDiagram
 - Un cuarto y un componente estructural pertenecen a un plano y, por comodidad de las consultas, guardan también el proyecto.
 - `user_sessions` y `password_reset_tokens` guardan solo el hash del identificador, nunca el valor que recibe el navegador.
 - La tabla `schema_migrations`, que anota las migraciones aplicadas, no aparece porque no pertenece al modelo de la aplicación.
+- La tabla `runtime_state` tampoco aparece: guarda en JSON el historial de «Deshacer» y los intentos de inicio de sesión cuando el backend no puede tenerlos en memoria, y no se relaciona con ninguna otra.
 
 ## Migraciones
 

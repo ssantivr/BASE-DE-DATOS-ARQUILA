@@ -34,6 +34,7 @@ scripts/init.sh Crea el esquema desde cero sin necesidad del backend
 | `008_element_surfaces.sql` | Materiales de superficie de cuartos y componentes. |
 | `009_project_roof.sql` | Cubierta del proyecto. |
 | `010_file_contents.sql` | Contenido de los archivos, para cuando el backend no puede guardarlos en disco. |
+| `011_runtime_state.sql` | Historial de «Deshacer» y límites de intentos, para cuando el backend no puede guardarlos en memoria. |
 
 ## Estructura general
 
@@ -54,7 +55,7 @@ users
     └── ai_conversations ── ai_messages
 ```
 
-`plans` y `elevations` pueden apuntar a un archivo de `files`. La tabla `schema_migrations` guarda qué migraciones ya se aplicaron.
+`plans` y `elevations` pueden apuntar a un archivo de `files`. La tabla `schema_migrations` guarda qué migraciones ya se aplicaron, y `runtime_state` guarda estado temporal del backend; ninguna de las dos se relaciona con las demás.
 
 Los modelos del ORM (SQLAlchemy) están en `app/models.py` de `BACKEND-ARQUILA`: son código que el backend importa, así que se mantienen allí en lugar de duplicarse. La fuente de verdad del esquema son las migraciones de este repositorio.
 
