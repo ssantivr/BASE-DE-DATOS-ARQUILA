@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS file_contents (
+    file_id INTEGER PRIMARY KEY REFERENCES files (id) ON DELETE CASCADE,
+    data BYTEA NOT NULL
+);
