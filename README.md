@@ -99,3 +99,8 @@ El backend busca este repositorio en la carpeta hermana `../BASE-DE-DATOS-ARQUIL
 ## Añadir una migración
 
 Crear un archivo nuevo en `migrations/` con el número siguiente (`010_descripcion.sql`). No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
+
+## Documentación
+
+- `docs/BASE_DATOS.md`: diagrama entidad-relación y detalle de las migraciones.
+- La documentación general del proyecto está en el repositorio [ARQUILA](https://github.com/ssantivr/ARQUILA).
