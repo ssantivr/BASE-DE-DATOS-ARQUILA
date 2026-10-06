@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS runtime_state (
+    scope VARCHAR(40) NOT NULL,
+    key VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (scope, key)
+);
