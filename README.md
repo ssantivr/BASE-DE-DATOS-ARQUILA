@@ -5,7 +5,7 @@ Esquema, migraciones y datos de ejemplo de la base de datos de ARQUILA. Es una d
 ```text
 ARQUILA
 ├── FRONTEND-ARQUILA        Interfaz (React)
-├── BACKEND-ARGUILA-        API (FastAPI)
+├── BACKEND-ARQUILA         API (FastAPI)
 └── BASE-DE-DATOS-ARQUILA   Este repositorio
 ```
 
@@ -55,7 +55,7 @@ users
 
 `plans` y `elevations` pueden apuntar a un archivo de `files`. La tabla `schema_migrations` guarda qué migraciones ya se aplicaron.
 
-Los modelos del ORM (SQLAlchemy) están en `app/models.py` de `BACKEND-ARGUILA-`: son código que el backend importa, así que se mantienen allí en lugar de duplicarse. La fuente de verdad del esquema son las migraciones de este repositorio.
+Los modelos del ORM (SQLAlchemy) están en `app/models.py` de `BACKEND-ARQUILA`: son código que el backend importa, así que se mantienen allí en lugar de duplicarse. La fuente de verdad del esquema son las migraciones de este repositorio.
 
 ## Variables necesarias
 
@@ -75,7 +75,7 @@ Se define en un archivo `.env` que no se sube al repositorio. Este repositorio n
 
 2. Aplicar las migraciones, de una de estas dos formas. Las dos registran lo aplicado en `schema_migrations`, así que se pueden combinar y repetir sin problema.
 
-   Con el backend (forma habitual), desde `BACKEND-ARGUILA-` con su `.env` configurado:
+   Con el backend (forma habitual), desde `BACKEND-ARQUILA` con su `.env` configurado:
 
    ```bash
    python -m app.migrate          # solo el esquema
@@ -99,6 +99,10 @@ El backend busca este repositorio en la carpeta hermana `../BASE-DE-DATOS-ARQUIL
 ## Añadir una migración
 
 Crear un archivo nuevo en `migrations/` con el número siguiente (`010_descripcion.sql`). No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
+
+## Comprobación automática
+
+En cada subida a `main` y en cada pull request, GitHub crea el esquema en un PostgreSQL 16 vacío con `scripts/init.sh --seed`, lo repite para comprobar que nada se aplica dos veces y verifica que quedaron anotadas todas las migraciones (`.github/workflows/ci.yml`).
 
 ## Documentación
 

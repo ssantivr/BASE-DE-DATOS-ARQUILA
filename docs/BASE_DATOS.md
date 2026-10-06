@@ -194,24 +194,24 @@ El esquema de la base de datos se define con archivos SQL numerados en `migratio
 Para crear las tablas en una base nueva, o actualizar una existente:
 
 ```bash
-cd BACKEND-ARGUILA-
+cd BACKEND-ARQUILA
 python -m app.migrate
 ```
 
 Sin el backend, `bash scripts/init.sh` hace lo mismo con `psql` (ver el `README.md`).
 
-El comando lee `DATABASE_URL` de `BACKEND-ARGUILA-/.env`, el mismo archivo que usa el arranque del backend, así que no hay que definirla en la terminal. Si se define en la terminal, ese valor tiene prioridad.
+El comando lee `DATABASE_URL` de `BACKEND-ARQUILA/.env`, el mismo archivo que usa el arranque del backend, así que no hay que definirla en la terminal. Si se define en la terminal, ese valor tiene prioridad.
 
 Con `python -m app.migrate --seed` se cargan además los datos de ejemplo de `seed.sql`: un usuario de demostración con tres proyectos, sus terrenos, planos, elevaciones, materiales y notas. «Casa Los Arrayanes» trae además 17 cuartos, 16 columnas y 8 vigas en sus dos plantas, y «Edificio Mirador» 16 cuartos y 24 columnas en cuatro pisos con cubierta plana, para que el modelo 3D se vea completo sin cargar nada a mano. «Cabaña Mindo» no tiene cuartos. Se puede ejecutar varias veces sin duplicar nada.
 
 El usuario de demostración es `demo@example.com` con contraseña `arquila-demo`. Es una credencial pública, pensada solo para desarrollo: no se debe cargar `seed.sql` en una base con datos reales ni en un servidor accesible desde internet.
 
-El script (`BACKEND-ARGUILA-/app/migrate.py`) anota cada archivo aplicado en la tabla `schema_migrations`, y en cada ejecución aplica solo los que faltan. Cada migración corre dentro de una transacción: si falla, no queda anotada y el proceso se detiene.
+El script (`BACKEND-ARQUILA/app/migrate.py`) anota cada archivo aplicado en la tabla `schema_migrations`, y en cada ejecución aplica solo los que faltan. Cada migración corre dentro de una transacción: si falla, no queda anotada y el proceso se detiene.
 
 Para cambiar el esquema:
 
 1. Crear un archivo nuevo con el siguiente número, por ejemplo `002_add_project_budget.sql`.
-2. Hacer el mismo cambio en `BACKEND-ARGUILA-/app/models.py`.
+2. Hacer el mismo cambio en `BACKEND-ARQUILA/app/models.py`.
 3. Ejecutar `python -m app.migrate`.
 
 Un archivo ya aplicado no se debe modificar: el script no lo volvería a ejecutar. Los cambios siempre van en un archivo nuevo.
