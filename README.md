@@ -106,6 +106,12 @@ Crear un archivo nuevo en `migrations/` con el número siguiente (`010_descripci
 
 En cada subida a `main` y en cada pull request, GitHub crea el esquema en un PostgreSQL 16 vacío con `scripts/init.sh --seed`, lo repite para comprobar que nada se aplica dos veces y verifica que quedaron anotadas todas las migraciones (`.github/workflows/ci.yml`).
 
+## Publicación automática
+
+Al fusionar en `main` un cambio en `migrations/`, GitHub aplica las migraciones pendientes a la base de datos de producción con `scripts/init.sh` (`.github/workflows/deploy.yml`). La dirección de esa base está guardada como secreto cifrado del repositorio, `PRODUCTION_DATABASE_URL`, y no aparece en el código ni en los registros. No carga `seed.sql`.
+
+Por eso el orden al cambiar el esquema es: primero se fusiona aquí la migración y después, en `BACKEND-ARQUILA`, el código que la usa.
+
 ## Documentación
 
 - `docs/BASE_DATOS.md`: diagrama entidad-relación y detalle de las migraciones.

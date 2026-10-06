@@ -1,0 +1,24 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - migrations/**
+      - scripts/init.sh
+  workflow_dispatch:
+
+concurrency: production-database
+
+jobs:
+  migrate:
+    name: Apply migrations to production
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the connection is configured
+        run: test -n "$DATABASE_URL"
+      - name: Apply the pending migrations
+        run: bash scripts/init.sh
