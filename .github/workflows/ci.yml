@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  schema:
+    name: Schema (migrations and seed)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: arquila_test
+          POSTGRES_USER: arquila
+          POSTGRES_PASSWORD: arquila
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arquila -d arquila_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://arquila:arquila@localhost:5432/arquila_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the schema and load the seed data
+        run: bash scripts/init.sh --seed
+      - name: Run it again to check that nothing is applied twice
+        run: bash scripts/init.sh --seed
+      - name: Check the applied migrations
+        run: |
+          applied=$(psql "${DATABASE_URL/+psycopg/}" --tuples-only --no-align --command "SELECT count(*) FROM schema_migrations")
+          expected=$(ls migrations/*.sql | wc -l)
+          test "$applied" = "$expected"
