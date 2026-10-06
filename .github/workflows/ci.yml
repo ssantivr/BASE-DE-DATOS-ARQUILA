@@ -31,6 +31,12 @@ jobs:
         run: bash scripts/init.sh --seed
       - name: Run it again to check that nothing is applied twice
         run: bash scripts/init.sh --seed
+      - name: Restore the demo data over a changed database
+        run: |
+          psql "${DATABASE_URL/+psycopg/}" --quiet --set ON_ERROR_STOP=1 --command "DELETE FROM projects WHERE name = 'Edificio Mirador'"
+          bash scripts/reset_demo.sh
+          projects=$(psql "${DATABASE_URL/+psycopg/}" --tuples-only --no-align --command "SELECT count(*) FROM projects")
+          test "$projects" = "3"
       - name: Check the applied migrations
         run: |
           applied=$(psql "${DATABASE_URL/+psycopg/}" --tuples-only --no-align --command "SELECT count(*) FROM schema_migrations")

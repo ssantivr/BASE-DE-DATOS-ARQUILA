@@ -1,0 +1,21 @@
+name: Reset demo
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+concurrency: production-database
+
+jobs:
+  reset:
+    name: Restore the demo data in production
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the connection is configured
+        run: test -n "$DATABASE_URL"
+      - name: Restore the demo user and its projects
+        run: bash scripts/reset_demo.sh
