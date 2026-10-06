@@ -19,6 +19,7 @@ PostgreSQL 16 o superior. El SQL de este repositorio es propio de PostgreSQL.
 migrations/     Cambios del esquema, numerados y aplicados en orden
 seed.sql        Datos de ejemplo (opcional)
 scripts/init.sh Crea el esquema desde cero sin necesidad del backend
+scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
 .env.example    Variable necesaria, sin valores reales
 ```
 
@@ -97,6 +98,12 @@ El backend busca este repositorio en la carpeta hermana `../BASE-DE-DATOS-ARQUIL
 ## Datos de ejemplo
 
 `seed.sql` crea un usuario de demostración con tres proyectos: `demo@example.com`, contraseña `arquila-demo`. Es una credencial pública, solo para desarrollo; en la base se guarda únicamente su hash Argon2. No cargar `seed.sql` en un entorno real.
+
+### Restaurar los datos de ejemplo
+
+`bash scripts/reset_demo.sh` borra al usuario de demostración con todo lo suyo y vuelve a cargar `seed.sql`. No toca a los demás usuarios. Usa la misma `DATABASE_URL` que `scripts/init.sh`.
+
+En la versión en línea lo ejecuta GitHub una vez al día (`.github/workflows/reset-demo.yml`), porque el usuario de demostración es público y cualquiera puede cambiar sus datos. También se puede lanzar a mano desde la pestaña «Actions» del repositorio. GitHub desactiva las tareas programadas de un repositorio que lleva 60 días sin cambios; en ese caso hay que volver a activarla desde esa pestaña.
 
 ## Añadir una migración
 
