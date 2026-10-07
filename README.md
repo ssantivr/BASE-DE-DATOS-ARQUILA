@@ -36,6 +36,10 @@ scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
 | `009_project_roof.sql` | Cubierta del proyecto. |
 | `010_file_contents.sql` | Contenido de los archivos, para cuando el backend no puede guardarlos en disco. |
 | `011_runtime_state.sql` | Historial de «Deshacer» y límites de intentos, para cuando el backend no puede guardarlos en memoria. |
+| `012_roles_and_permissions.sql` | Roles, permisos y su asignación a los usuarios. Los usuarios que ya existían quedan como `architect`. |
+| `013_properties_and_units.sql` | Propiedades y unidades, y en los cuartos la unidad, la categoría y la malla 3D. |
+| `014_spatial_elements.sql` | Elementos espaciales por capa (estructura, instalaciones, acabados) con su caja envolvente. |
+| `015_walkthrough_and_renovation.sql` | Pasos de la corrida de interior y registro de obras. |
 
 ## Estructura general
 

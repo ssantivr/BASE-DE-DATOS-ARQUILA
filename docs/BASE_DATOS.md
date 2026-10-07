@@ -23,7 +23,11 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 008_element_surfaces.sql
 │   ├── 009_project_roof.sql
 │   ├── 010_file_contents.sql
-│   └── 011_runtime_state.sql
+│   ├── 011_runtime_state.sql
+│   ├── 012_roles_and_permissions.sql
+│   ├── 013_properties_and_units.sql
+│   ├── 014_spatial_elements.sql
+│   └── 015_walkthrough_and_renovation.sql
 └── seed.sql
 ```
 
@@ -195,6 +199,28 @@ erDiagram
 - `user_sessions` y `password_reset_tokens` guardan solo el hash del identificador, nunca el valor que recibe el navegador.
 - La tabla `schema_migrations`, que anota las migraciones aplicadas, no aparece porque no pertenece al modelo de la aplicación.
 - La tabla `runtime_state` tampoco aparece: guarda en JSON el historial de «Deshacer» y los intentos de inicio de sesión cuando el backend no puede tenerlos en memoria, y no se relaciona con ninguna otra.
+
+## Corrida de interior, obras y roles
+
+Las migraciones 012 a 015 añaden estas tablas, que todavía no están dibujadas en el diagrama de arriba:
+
+| Tabla | Qué guarda | Se relaciona con |
+|---|---|---|
+| `roles`, `permissions`, `role_permissions`, `user_roles` | Control de acceso por roles. La migración 012 carga tres roles (`admin`, `architect`, `viewer`) y nueve permisos. | `users` |
+| `properties` | El inmueble de un proyecto: tipo, dirección, estado y `spatial_metadata` (JSONB). | `projects` |
+| `units` | Unidades del inmueble: código, nivel, estado, precio, área, `model_asset_ref` y `asset_config` (JSONB). | `properties` |
+| `spatial_elements` | Elementos de una capa (`structure`, `installations`, `finishes`) con su caja envolvente en metros, su estado de obra (`existing`, `planned`, `demolition`), la malla y `config` (JSONB). | `projects`, `rooms` |
+| `walkthrough_steps` | Paradas de la corrida de interior, en orden, con su duración y `view_config` (JSONB). | `projects`, `rooms` |
+| `renovation_logs` | Obras previstas o en curso: capa, estado, fechas y coste estimado. | `projects`, `rooms`, `spatial_elements`, `users` |
+
+La tabla `rooms` gana `unit_id`, `category` y `mesh_ref`.
+
+- **Borrado**: eliminar un proyecto elimina todo lo anterior. Eliminar un cuarto, una unidad o un elemento espacial no elimina lo que lo referencia: la referencia queda vacía (`ON DELETE SET NULL`), para no perder el registro de obras.
+- **Índices espaciales**: `rooms` y `spatial_elements` tienen un índice GiST sobre la caja de su planta, `box(point(min_x, min_y), point(max_x, max_y))`. Usa los tipos geométricos propios de PostgreSQL, así que no hace falta instalar PostGIS. El backend consulta con el operador `&&` sobre esa misma expresión.
+- **Claves foráneas**: todas tienen índice. Las que admiten vacío usan un índice parcial (`WHERE ... IS NOT NULL`), y `properties.project_id` y `units.property_id` quedan cubiertas por su restricción `UNIQUE`.
+- **JSONB**: cada columna exige que el valor sea un objeto (`jsonb_typeof(...) = 'object'`). No tienen índice GIN porque ninguna consulta filtra por su contenido.
+- **Importación repetible**: `(project_id, source, external_id)` es único cuando hay `external_id`, de modo que volver a importar un archivo actualiza los elementos en lugar de duplicarlos.
+- Los archivos de migración y `seed.sql` no pueden contener el signo de porcentaje: el backend los ejecuta con psycopg, que lo interpreta como marcador de parámetro.
 
 ## Migraciones
 

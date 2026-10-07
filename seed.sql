@@ -305,3 +305,114 @@ JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
 WHERE NOT EXISTS (
     SELECT 1 FROM recommendations x WHERE x.project_id = p.id AND x.content = v.content
 );
+
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u
+CROSS JOIN roles r
+WHERE u.email = 'demo@example.com'
+  AND r.name = 'architect'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO properties (project_id, name, property_type, address, status, spatial_metadata)
+SELECT p.id, 'Casa Los Arrayanes', 'house', 'Cumbayá, Quito', 'renovation',
+       '{"units": "m", "up_axis": "z", "origin": "lot_corner"}'::jsonb
+FROM projects p
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE p.name = 'Casa Los Arrayanes'
+ON CONFLICT (project_id, name) DO NOTHING;
+
+INSERT INTO units (property_id, code, name, floor_level, status, price, area_m2, asset_config)
+SELECT pr.id, 'CASA-01', 'Vivienda principal', 0, 'under_renovation', 285000, 288,
+       '{"default_view": "isometric", "layers": ["structure", "installations", "finishes"]}'::jsonb
+FROM properties pr
+JOIN projects p ON p.id = pr.project_id AND p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+ON CONFLICT (property_id, code) DO NOTHING;
+
+UPDATE rooms r
+SET unit_id = un.id, category = v.category
+FROM (
+    VALUES
+        ('Garaje', 'garage'),
+        ('Hall', 'circulation'),
+        ('Sala', 'living_dining'),
+        ('Cocina', 'kitchen'),
+        ('Comedor', 'living_dining'),
+        ('Lavandería', 'service'),
+        ('Baño social', 'bathroom'),
+        ('Escalera', 'circulation'),
+        ('Estudio', 'study'),
+        ('Hab. principal', 'master_bedroom'),
+        ('Estar íntimo', 'circulation'),
+        ('Habitación 2', 'bedroom'),
+        ('Baño principal', 'bathroom'),
+        ('Baño', 'bathroom'),
+        ('Habitación 3', 'bedroom'),
+        ('Habitación 4', 'bedroom')
+) AS v (name, category)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN properties pr ON pr.project_id = p.id
+JOIN units un ON un.property_id = pr.id AND un.code = 'CASA-01'
+WHERE r.project_id = p.id
+  AND r.name = v.name
+  AND r.unit_id IS NULL;
+
+INSERT INTO spatial_elements (project_id, room_id, layer, kind, name, work_status,
+                              min_x_m, min_y_m, min_z_m, max_x_m, max_y_m, max_z_m)
+SELECT p.id, r.id, v.layer, v.kind, v.name, v.work_status,
+       v.min_x_m, v.min_y_m, v.min_z_m, v.max_x_m, v.max_y_m, v.max_z_m
+FROM (
+    VALUES
+        ('Sala', 'installations', 'electrical_conduit', 'Circuito de tomacorrientes de la sala', 'existing', 10.6, 8.05, 0.3, 14.9, 8.12, 0.37),
+        ('Sala', 'structure', 'partition_wall', 'Muro divisorio entre sala y comedor', 'demolition', 11, 12.95, 0, 15, 13.05, 2.8),
+        ('Cocina', 'installations', 'lighting', 'Riel de iluminación de la cocina', 'existing', 3.5, 14.45, 2.6, 6.5, 14.55, 2.68),
+        ('Hab. principal', 'installations', 'hvac_duct', 'Ducto de aire acondicionado', 'planned', 3.2, 10.2, 5.2, 8.3, 10.7, 5.5),
+        ('Hab. principal', 'finishes', 'flooring', 'Piso de madera de la habitación principal', 'planned', 3.1, 8.1, 2.8, 8.4, 12.9, 2.84),
+        ('Baño principal', 'installations', 'water_pipe', 'Tubería de agua fría', 'existing', 3.1, 13.05, 3.1, 6.9, 13.15, 3.2),
+        ('Baño principal', 'installations', 'drain_pipe', 'Desagüe nuevo de la ducha', 'planned', 5.5, 13.2, 2.82, 5.65, 15.8, 2.95),
+        ('Baño principal', 'finishes', 'wall_cladding', 'Enchape de porcelanato', 'planned', 3.02, 13.1, 2.8, 3.08, 15.9, 5)
+) AS v (room, layer, kind, name, work_status, min_x_m, min_y_m, min_z_m, max_x_m, max_y_m, max_z_m)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN rooms r ON r.project_id = p.id AND r.name = v.room
+WHERE NOT EXISTS (
+    SELECT 1 FROM spatial_elements x WHERE x.project_id = p.id AND x.name = v.name
+);
+
+INSERT INTO walkthrough_steps (project_id, room_id, position, title, description, duration_ms, view_config)
+SELECT p.id, r.id, v.position, v.title, v.description, v.duration_ms, v.view_config::jsonb
+FROM (
+    VALUES
+        ('Sala', 0, 'Sala / Comedor', 'Se retira el muro divisorio para unir la sala con el comedor y se conserva el circuito eléctrico.', 7000, '{"cut_fraction": 0.8}'),
+        ('Cocina', 1, 'Cocina', 'La cocina mantiene su distribución y el riel de iluminación existente.', 5000, '{"cut_fraction": 0.8}'),
+        ('Hab. principal', 2, 'Habitación principal', 'Piso de madera nuevo y un ducto de aire acondicionado sobre la cabecera.', 7000, '{"cut_fraction": 0.85}'),
+        ('Baño principal', 3, 'Baño principal', 'Se cambia el desagüe de la ducha y se enchapa la pared húmeda.', 6000, '{"cut_fraction": 0.8}')
+) AS v (room, position, title, description, duration_ms, view_config)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN rooms r ON r.project_id = p.id AND r.name = v.room
+WHERE NOT EXISTS (
+    SELECT 1 FROM walkthrough_steps x WHERE x.project_id = p.id AND x.title = v.title
+);
+
+INSERT INTO renovation_logs (project_id, room_id, spatial_element_id, created_by, layer, title,
+                             description, status, planned_start, planned_end, estimated_cost)
+SELECT p.id, r.id, e.id, u.id, v.layer, v.title, v.description, v.status,
+       v.planned_start::date, v.planned_end::date, v.estimated_cost
+FROM (
+    VALUES
+        ('Sala', 'Muro divisorio entre sala y comedor', 'structure', 'Demoler el muro divisorio', 'Muro no portante. Apuntalar el dintel antes de demoler.', 'planned', '2026-11-02', '2026-11-06', 950),
+        ('Hab. principal', 'Ducto de aire acondicionado', 'installations', 'Instalar el ducto de aire acondicionado', 'Ducto rectangular bajo la losa, con rejilla sobre la cabecera.', 'planned', '2026-11-09', '2026-11-13', 1800),
+        ('Hab. principal', 'Piso de madera de la habitación principal', 'finishes', 'Colocar el piso de madera', 'Duela de chanul sobre la losa nivelada.', 'planned', '2026-11-16', '2026-11-20', 2400),
+        ('Baño principal', 'Desagüe nuevo de la ducha', 'installations', 'Cambiar el desagüe de la ducha', 'Tubería de PVC de 75 mm con pendiente del 2 por ciento.', 'in_progress', '2026-10-05', '2026-10-09', 420),
+        ('Baño principal', 'Enchape de porcelanato', 'finishes', 'Enchapar la pared húmeda', 'Porcelanato de 60 × 120 cm hasta 2,20 m de altura.', 'planned', '2026-10-12', '2026-10-16', 1150)
+) AS v (room, element, layer, title, description, status, planned_start, planned_end, estimated_cost)
+JOIN projects p ON p.name = 'Casa Los Arrayanes'
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+JOIN rooms r ON r.project_id = p.id AND r.name = v.room
+LEFT JOIN spatial_elements e ON e.project_id = p.id AND e.name = v.element
+WHERE NOT EXISTS (
+    SELECT 1 FROM renovation_logs x WHERE x.project_id = p.id AND x.title = v.title
+);
