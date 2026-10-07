@@ -46,23 +46,25 @@ JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
 JOIN terrains t ON t.project_id = p.id AND t.name = v.terrain
 ON CONFLICT (terrain_id, position) DO NOTHING;
 
+-- The model stacks the levels in the order the plans were created, so the order is explicit.
 INSERT INTO plans (project_id, title, level, scale)
 SELECT p.id, v.title, v.level, v.scale
 FROM (
     VALUES
-        ('Casa Los Arrayanes', 'Planta baja', '0', '1:100'),
-        ('Casa Los Arrayanes', 'Planta alta', '1', '1:100'),
-        ('Casa Los Arrayanes', 'Implantación', 'Terreno', '1:200'),
-        ('Casa Los Arrayanes', 'Cubiertas', '2', '1:100'),
-        ('Edificio Mirador', 'Planta de locales', '0', '1:100'),
-        ('Edificio Mirador', 'Planta tipo', '1 a 3', '1:100'),
-        ('Cabaña Mindo', 'Planta única', NULL, '1:50')
-) AS v (project, title, level, scale)
+        (1, 'Casa Los Arrayanes', 'Planta baja', '0', '1:100'),
+        (2, 'Casa Los Arrayanes', 'Planta alta', '1', '1:100'),
+        (3, 'Casa Los Arrayanes', 'Implantación', 'Terreno', '1:200'),
+        (4, 'Casa Los Arrayanes', 'Cubiertas', '2', '1:100'),
+        (5, 'Edificio Mirador', 'Planta de locales', '0', '1:100'),
+        (6, 'Edificio Mirador', 'Planta tipo', '1 a 3', '1:100'),
+        (7, 'Cabaña Mindo', 'Planta única', NULL, '1:50')
+) AS v (position, project, title, level, scale)
 JOIN projects p ON p.name = v.project
 JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
 WHERE NOT EXISTS (
     SELECT 1 FROM plans x WHERE x.project_id = p.id AND x.title = v.title
-);
+)
+ORDER BY v.position;
 
 INSERT INTO elevations (project_id, title, orientation)
 SELECT p.id, v.title, v.orientation
@@ -197,7 +199,8 @@ JOIN projects p ON p.name = 'Edificio Mirador'
 JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
 WHERE NOT EXISTS (
     SELECT 1 FROM plans x WHERE x.project_id = p.id AND x.title = v.title
-);
+)
+ORDER BY v.level;
 
 UPDATE projects p
 SET roof = 'flat'
@@ -385,9 +388,9 @@ INSERT INTO walkthrough_steps (project_id, room_id, position, title, description
 SELECT p.id, r.id, v.position, v.title, v.description, v.duration_ms, v.view_config::jsonb
 FROM (
     VALUES
-        ('Sala', 0, 'Sala / Comedor', 'Se retira el muro divisorio para unir la sala con el comedor y se conserva el circuito eléctrico.', 7000, '{"cut_fraction": 0.8}'),
+        ('Sala', 0, 'Sala / Comedor', 'Se retira el muro divisorio para unir la sala con el comedor y se conserva el circuito eléctrico.', 7000, '{"cut_fraction": 0.8, "camera": {"position": [11.2, 8.8, 1.6], "target": [14.2, 12.4, 1.2]}}'),
         ('Cocina', 1, 'Cocina', 'La cocina mantiene su distribución y el riel de iluminación existente.', 5000, '{"cut_fraction": 0.8}'),
-        ('Hab. principal', 2, 'Habitación principal', 'Piso de madera nuevo y un ducto de aire acondicionado sobre la cabecera.', 7000, '{"cut_fraction": 0.85}'),
+        ('Hab. principal', 2, 'Habitación principal', 'Piso de madera nuevo y un ducto de aire acondicionado sobre la cabecera.', 7000, '{"cut_fraction": 0.85, "camera": {"position": [3.8, 12.2, 4.4], "target": [7.6, 9, 4]}}'),
         ('Baño principal', 3, 'Baño principal', 'Se cambia el desagüe de la ducha y se enchapa la pared húmeda.', 6000, '{"cut_fraction": 0.8}')
 ) AS v (room, position, title, description, duration_ms, view_config)
 JOIN projects p ON p.name = 'Casa Los Arrayanes'

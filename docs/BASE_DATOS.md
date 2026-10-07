@@ -220,6 +220,7 @@ La tabla `rooms` gana `unit_id`, `category` y `mesh_ref`.
 - **Claves foráneas**: todas tienen índice. Las que admiten vacío usan un índice parcial (`WHERE ... IS NOT NULL`), y `properties.project_id` y `units.property_id` quedan cubiertas por su restricción `UNIQUE`.
 - **JSONB**: cada columna exige que el valor sea un objeto (`jsonb_typeof(...) = 'object'`). No tienen índice GIN porque ninguna consulta filtra por su contenido.
 - **Importación repetible**: `(project_id, source, external_id)` es único cuando hay `external_id`, de modo que volver a importar un archivo actualiza los elementos en lugar de duplicarlos.
+- `seed.sql` crea los planos con un `ORDER BY` explícito: el modelo 3D apila los niveles en el orden en que se crearon los planos, y las alturas de los elementos espaciales y de las cámaras del recorrido son absolutas.
 - Los archivos de migración y `seed.sql` no pueden contener el signo de porcentaje: el backend los ejecuta con psycopg, que lo interpreta como marcador de parámetro.
 
 ## Migraciones
