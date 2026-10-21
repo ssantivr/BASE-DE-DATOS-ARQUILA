@@ -40,6 +40,18 @@ scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
 | `013_properties_and_units.sql` | Propiedades y unidades, y en los cuartos la unidad, la categoría y la malla 3D. |
 | `014_spatial_elements.sql` | Elementos espaciales por capa (estructura, instalaciones, acabados) con su caja envolvente. |
 | `015_walkthrough_and_renovation.sql` | Pasos de la corrida de interior y registro de obras. |
+| `016_foreign_key_and_search_indexes.sql` | Índices en las claves foráneas que no tenían y en los campos de búsqueda y orden. |
+| `017_audit_columns.sql` | `updated_at`, `created_at` y `created_by` donde faltaban, y un trigger que mantiene `updated_at`. |
+| `018_project_archive_and_progress.sql` | Archivado lógico (`archived_at`), portada (`cover_file_id`) y avance (`progress`) de los proyectos. |
+| `019_tasks.sql` | Tareas de los proyectos. |
+| `020_project_versions.sql` | Versiones guardadas de un proyecto. |
+| `021_activity_log.sql` | Registro de actividad. |
+| `022_notifications.sql` | Notificaciones de los usuarios. |
+| `023_user_preferences_and_profile.sql` | Nombre visible y avatar del usuario, y sus preferencias de la interfaz. |
+| `024_scene_settings_and_walkthrough_points.sql` | Iluminación y cámaras de la escena 3D, y puntos de recorrido. |
+| `025_project_type_and_stage.sql` | Tipo de proyecto y etapa de su ciclo de vida. |
+| `026_files_without_project.sql` | Archivos sin proyecto, para las fotos de perfil. |
+| `027_same_project_references.sql` | Claves foráneas compuestas: cada referencia apunta a una fila de su propio proyecto. |
 
 ## Estructura general
 
@@ -126,4 +138,5 @@ Por eso el orden al cambiar el esquema es: primero se fusiona aquí la migració
 ## Documentación
 
 - `docs/BASE_DATOS.md`: diagrama entidad-relación y detalle de las migraciones.
+- `docs/ESQUEMA.md`: todas las tablas, claves e índices, la auditoría del esquema, el propósito de las tablas añadidas en 016 a 024 y los cambios de 025 a 027.
 - La documentación general del proyecto está en el repositorio [ARQUILA](https://github.com/ssantivr/ARQUILA).

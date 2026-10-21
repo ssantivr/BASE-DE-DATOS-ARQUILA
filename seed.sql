@@ -419,3 +419,85 @@ LEFT JOIN spatial_elements e ON e.project_id = p.id AND e.name = v.element
 WHERE NOT EXISTS (
     SELECT 1 FROM renovation_logs x WHERE x.project_id = p.id AND x.title = v.title
 );
+
+UPDATE users
+SET display_name = 'Demo'
+WHERE email = 'demo@example.com'
+  AND display_name IS NULL;
+
+INSERT INTO user_preferences (user_id, theme, units, density, reduce_motion, camera_defaults,
+                              preview_quality, notifications)
+SELECT u.id, 'auto', 'metric', 'comfortable', FALSE,
+       '{"fov": 50, "height_m": 1.6, "orbit_speed": 1}'::jsonb,
+       'medium',
+       '{"task_due": true, "project_shared": true, "email": false}'::jsonb
+FROM users u
+WHERE u.email = 'demo@example.com'
+ON CONFLICT (user_id) DO NOTHING;
+
+UPDATE projects p
+SET progress = v.progress
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 35),
+        ('Edificio Mirador', 10),
+        ('Cabaña Mindo', 5)
+) AS v (name, progress), users u
+WHERE u.id = p.owner_id
+  AND u.email = 'demo@example.com'
+  AND p.name = v.name
+  AND p.progress = 0;
+
+INSERT INTO tasks (project_id, title, description, status, assignee_id, due_date, progress, created_by)
+SELECT p.id, v.title, v.description, v.status, u.id, v.due_date::date, v.progress, u.id
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'Revisar la sección de las columnas del patio', 'Enviar al ingeniero estructural las cargas de la losa de la planta alta.', 'in_progress', '2026-10-30', 40),
+        ('Casa Los Arrayanes', 'Pedir cotización del piso de madera', 'Tres cotizaciones de duela de chanul para la habitación principal.', 'todo', '2026-11-06', 0),
+        ('Casa Los Arrayanes', 'Aprobar el desagüe de la ducha', 'Comprobar la pendiente antes de cerrar el contrapiso.', 'done', '2026-10-09', 100),
+        ('Edificio Mirador', 'Contratar el estudio de suelos', 'Necesario para diseñar el muro de contención del lado alto.', 'todo', '2026-11-20', 0),
+        ('Edificio Mirador', 'Confirmar retiros con el municipio', 'Altura máxima y retiros de un lote esquinero.', 'in_progress', '2026-11-13', 50),
+        ('Cabaña Mindo', 'Encargar el levantamiento topográfico', 'Incluir el nivel máximo del río.', 'todo', NULL, 0)
+) AS v (project, title, description, status, due_date, progress)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM tasks x WHERE x.project_id = p.id AND x.title = v.title
+);
+
+-- The snapshots summarise what the seed itself created, so they stay consistent with it.
+INSERT INTO project_versions (project_id, version_number, label, snapshot, created_by)
+SELECT p.id, v.version_number, v.label,
+       jsonb_build_object(
+           'name', p.name,
+           'status', p.status,
+           'roof', p.roof,
+           'plans', (SELECT count(*) FROM plans x WHERE x.project_id = p.id),
+           'rooms', (SELECT count(*) FROM rooms x WHERE x.project_id = p.id),
+           'structural_components', (SELECT count(*) FROM structural_components x WHERE x.project_id = p.id),
+           'materials', (SELECT count(*) FROM materials x WHERE x.project_id = p.id)
+       ),
+       u.id
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 1, 'Anteproyecto'),
+        ('Casa Los Arrayanes', 2, 'Remodelación interior'),
+        ('Edificio Mirador', 1, 'Primera distribución')
+) AS v (project, version_number, label)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+ON CONFLICT (project_id, version_number) DO NOTHING;
+
+UPDATE projects p
+SET project_type = v.project_type,
+    stage = v.stage
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'house', 'in_progress'),
+        ('Edificio Mirador', 'mixed_use', 'draft'),
+        ('Cabaña Mindo', 'house', 'archived')
+) AS v (name, project_type, stage), users u
+WHERE u.id = p.owner_id
+  AND u.email = 'demo@example.com'
+  AND p.name = v.name
+  AND p.project_type IS NULL;
