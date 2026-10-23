@@ -133,6 +133,8 @@ En cada subida a `main` y en cada pull request, GitHub crea el esquema en un Pos
 
 Al fusionar en `main` un cambio en `migrations/`, GitHub aplica las migraciones pendientes a la base de datos de producción con `scripts/init.sh` (`.github/workflows/deploy.yml`). La dirección de esa base está guardada como secreto cifrado del repositorio, `PRODUCTION_DATABASE_URL`, y no aparece en el código ni en los registros. No carga `seed.sql`.
 
+El trabajo usa el entorno `production` de GitHub y no empieza hasta que lo aprueba uno de sus revisores (Settings → Environments → production → Required reviewers). Antes de aprobarlo conviene hacer una copia de la base en Neon.
+
 Por eso el orden al cambiar el esquema es: primero se fusiona aquí la migración y después, en `BACKEND-ARQUILA`, el código que la usa.
 
 ## Documentación
