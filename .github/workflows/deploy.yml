@@ -14,6 +14,8 @@ jobs:
   migrate:
     name: Apply migrations to production
     runs-on: ubuntu-latest
+    # The job waits until a reviewer of the production environment approves it.
+    environment: production
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
     steps:

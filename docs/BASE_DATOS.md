@@ -27,9 +27,23 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 012_roles_and_permissions.sql
 │   ├── 013_properties_and_units.sql
 │   ├── 014_spatial_elements.sql
-│   └── 015_walkthrough_and_renovation.sql
+│   ├── 015_walkthrough_and_renovation.sql
+│   ├── 016_foreign_key_and_search_indexes.sql
+│   ├── 017_audit_columns.sql
+│   ├── 018_project_archive_and_progress.sql
+│   ├── 019_tasks.sql
+│   ├── 020_project_versions.sql
+│   ├── 021_activity_log.sql
+│   ├── 022_notifications.sql
+│   ├── 023_user_preferences_and_profile.sql
+│   ├── 024_scene_settings_and_walkthrough_points.sql
+│   ├── 025_project_type_and_stage.sql
+│   ├── 026_files_without_project.sql
+│   └── 027_same_project_references.sql
 └── seed.sql
 ```
+
+Las tablas añadidas por las migraciones 016 a 024 (tareas, versiones, actividad, notificaciones, preferencias, escena y puntos de recorrido), los cambios de 025 a 027 y la auditoría del esquema están en `docs/ESQUEMA.md`.
 
 ## Diagrama entidad-relación
 

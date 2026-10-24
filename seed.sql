@@ -419,3 +419,214 @@ LEFT JOIN spatial_elements e ON e.project_id = p.id AND e.name = v.element
 WHERE NOT EXISTS (
     SELECT 1 FROM renovation_logs x WHERE x.project_id = p.id AND x.title = v.title
 );
+
+UPDATE users
+SET display_name = 'Demo'
+WHERE email = 'demo@example.com'
+  AND display_name IS NULL;
+
+INSERT INTO user_preferences (user_id, theme, units, density, reduce_motion, camera_defaults,
+                              preview_quality, notifications)
+SELECT u.id, 'auto', 'metric', 'comfortable', FALSE,
+       '{"fov": 50, "height_m": 1.6, "orbit_speed": 1}'::jsonb,
+       'medium',
+       '{"task_due": true, "project_shared": true, "email": false}'::jsonb
+FROM users u
+WHERE u.email = 'demo@example.com'
+ON CONFLICT (user_id) DO NOTHING;
+
+UPDATE projects p
+SET progress = v.progress
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 35),
+        ('Edificio Mirador', 10),
+        ('Cabaña Mindo', 5)
+) AS v (name, progress), users u
+WHERE u.id = p.owner_id
+  AND u.email = 'demo@example.com'
+  AND p.name = v.name
+  AND p.progress = 0;
+
+INSERT INTO tasks (project_id, title, description, status, assignee_id, due_date, progress, created_by)
+SELECT p.id, v.title, v.description, v.status, u.id, v.due_date::date, v.progress, u.id
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'Revisar la sección de las columnas del patio', 'Enviar al ingeniero estructural las cargas de la losa de la planta alta.', 'in_progress', '2026-10-30', 40),
+        ('Casa Los Arrayanes', 'Pedir cotización del piso de madera', 'Tres cotizaciones de duela de chanul para la habitación principal.', 'todo', '2026-11-06', 0),
+        ('Casa Los Arrayanes', 'Aprobar el desagüe de la ducha', 'Comprobar la pendiente antes de cerrar el contrapiso.', 'done', '2026-10-09', 100),
+        ('Edificio Mirador', 'Contratar el estudio de suelos', 'Necesario para diseñar el muro de contención del lado alto.', 'todo', '2026-11-20', 0),
+        ('Edificio Mirador', 'Confirmar retiros con el municipio', 'Altura máxima y retiros de un lote esquinero.', 'in_progress', '2026-11-13', 50),
+        ('Cabaña Mindo', 'Encargar el levantamiento topográfico', 'Incluir el nivel máximo del río.', 'todo', NULL, 0)
+) AS v (project, title, description, status, due_date, progress)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM tasks x WHERE x.project_id = p.id AND x.title = v.title
+);
+
+-- The versions hold the same document that the API saves (take() in
+-- BACKEND-ARQUILA/app/services/project_snapshot.py), so the panel can list and restore them:
+-- for each row, the columns of its SQLAlchemy model (the table also has audit columns that the
+-- model leaves out, and restoring a version with them would fail), without the id or the link to
+-- the parent, with NUMERIC values as text, and the rows in id order. The functions are temporary:
+-- they disappear when the session that loads the seed ends.
+CREATE FUNCTION pg_temp.snapshot_values(source regclass, row_data jsonb, keys text[])
+RETURNS jsonb
+LANGUAGE sql STABLE
+AS $$
+    SELECT coalesce(
+        jsonb_object_agg(
+            a.attname,
+            CASE
+                WHEN a.atttypid = 'numeric'::regtype AND jsonb_typeof(row_data -> a.attname) = 'number'
+                    THEN to_jsonb(row_data ->> a.attname)
+                -- PostgreSQL drops the trailing zeros of the microseconds; isoformat() in Python
+                -- writes all six, or none when they are zero.
+                WHEN a.atttypid = 'timestamp'::regtype AND jsonb_typeof(row_data -> a.attname) = 'string'
+                    THEN to_jsonb(
+                        to_char((row_data ->> a.attname)::timestamp, 'YYYY-MM-DD"T"HH24:MI:SS')
+                        || CASE
+                               WHEN mod(extract(microseconds FROM (row_data ->> a.attname)::timestamp)::bigint, 1000000) <> 0
+                                   THEN to_char((row_data ->> a.attname)::timestamp, '.US')
+                               ELSE ''
+                           END
+                    )
+                ELSE row_data -> a.attname
+            END
+        ),
+        '{}'::jsonb
+    )
+    FROM pg_attribute a
+    WHERE a.attrelid = source
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND a.attname = ANY (keys)
+$$;
+
+CREATE FUNCTION pg_temp.project_snapshot(target integer)
+RETURNS jsonb
+LANGUAGE sql STABLE
+AS $$
+    SELECT jsonb_build_object(
+        'format', 1,
+        'project', jsonb_build_object(
+            'description', p.description,
+            'location', p.location,
+            'roof', p.roof,
+            'progress', p.progress,
+            'cover_file_id', p.cover_file_id
+        ),
+        'terrains', coalesce((
+            SELECT jsonb_agg(
+                pg_temp.snapshot_values('terrains', to_jsonb(t), '{name,area_m2,width_m,length_m,slope_percent,soil_type,latitude,longitude,created_at}') || jsonb_build_object(
+                    'points', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('terrain_points', to_jsonb(tp), '{position,x_m,y_m}')
+                                         ORDER BY tp.position)
+                        FROM terrain_points tp
+                        WHERE tp.terrain_id = t.id
+                    ), '[]'::jsonb)
+                )
+                ORDER BY t.id
+            )
+            FROM terrains t
+            WHERE t.project_id = p.id
+        ), '[]'::jsonb),
+        'plans', coalesce((
+            SELECT jsonb_agg(
+                pg_temp.snapshot_values('plans', to_jsonb(pl), '{file_id,title,level,scale,surface,created_at}') || jsonb_build_object(
+                    'rooms', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('rooms', to_jsonb(r), '{unit_id,name,category,mesh_ref,x_m,y_m,width_m,depth_m,height_m,surface,created_at}') ORDER BY r.id)
+                        FROM rooms r
+                        WHERE r.plan_id = pl.id
+                    ), '[]'::jsonb),
+                    'components', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('structural_components', to_jsonb(c), '{kind,name,x_m,y_m,width_m,depth_m,height_m,surface,created_at}')
+                                         ORDER BY c.id)
+                        FROM structural_components c
+                        WHERE c.plan_id = pl.id
+                    ), '[]'::jsonb)
+                )
+                ORDER BY pl.id
+            )
+            FROM plans pl
+            WHERE pl.project_id = p.id
+        ), '[]'::jsonb),
+        'materials', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('materials', to_jsonb(x), '{name,category,unit,quantity,unit_cost,created_at}') ORDER BY x.id)
+            FROM materials x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'elevations', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('elevations', to_jsonb(x), '{file_id,title,orientation,created_at}') ORDER BY x.id)
+            FROM elevations x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'tasks', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('tasks', to_jsonb(x), '{title,description,status,assignee_id,due_date,progress,created_by,created_at,updated_at}') ORDER BY x.id)
+            FROM tasks x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'walkthrough_points', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('walkthrough_points', to_jsonb(x), '{name,position,target,sort_order,created_at,updated_at}') ORDER BY x.id)
+            FROM walkthrough_points x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'scene_settings', (
+            SELECT pg_temp.snapshot_values('scene_settings', to_jsonb(s), '{lighting,camera_presets,created_at,updated_at}')
+            FROM scene_settings s
+            WHERE s.project_id = p.id
+        )
+    )
+    FROM projects p
+    WHERE p.id = target
+$$;
+
+-- The first version of Casa Los Arrayanes is the design before the interior work: no tasks yet,
+-- no progress, and only the materials of the first estimate.
+-- ON CONFLICT replaces only the versions without "format", the summaries that earlier seeds
+-- wrote, which the panel cannot open; a valid version is left as it is.
+INSERT INTO project_versions (project_id, version_number, label, snapshot, created_by)
+SELECT p.id, v.version_number, v.label,
+       CASE
+           WHEN v.before_interior_work THEN
+               jsonb_set(
+                   jsonb_set(s.snapshot, '{project,progress}', '0'::jsonb) || '{"tasks": []}'::jsonb,
+                   '{materials}',
+                   coalesce((
+                       SELECT jsonb_agg(m.value ORDER BY m.position)
+                       FROM jsonb_array_elements(s.snapshot -> 'materials') WITH ORDINALITY AS m (value, position)
+                       WHERE m.value ->> 'name' NOT IN (
+                           'Puerta de madera', 'Cerámica de baño', 'Tubería PVC de 110 mm', 'Cable eléctrico n.º 12'
+                       )
+                   ), '[]'::jsonb)
+               )
+           ELSE s.snapshot
+       END,
+       u.id
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 1, 'Anteproyecto', TRUE),
+        ('Casa Los Arrayanes', 2, 'Remodelación interior', FALSE),
+        ('Edificio Mirador', 1, 'Primera distribución', FALSE)
+) AS v (project, version_number, label, before_interior_work)
+JOIN projects p ON p.name = v.project
+JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
+CROSS JOIN LATERAL (SELECT pg_temp.project_snapshot(p.id) AS snapshot) AS s
+ON CONFLICT (project_id, version_number) DO UPDATE
+SET snapshot = EXCLUDED.snapshot
+WHERE NOT (project_versions.snapshot ? 'format');
+
+UPDATE projects p
+SET project_type = v.project_type,
+    stage = v.stage
+FROM (
+    VALUES
+        ('Casa Los Arrayanes', 'house', 'in_progress'),
+        ('Edificio Mirador', 'mixed_use', 'draft'),
+        ('Cabaña Mindo', 'house', 'archived')
+) AS v (name, project_type, stage), users u
+WHERE u.id = p.owner_id
+  AND u.email = 'demo@example.com'
+  AND p.name = v.name
+  AND p.project_type IS NULL;
