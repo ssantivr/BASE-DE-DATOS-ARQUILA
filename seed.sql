@@ -465,28 +465,157 @@ WHERE NOT EXISTS (
     SELECT 1 FROM tasks x WHERE x.project_id = p.id AND x.title = v.title
 );
 
--- The snapshots summarise what the seed itself created, so they stay consistent with it.
+-- The versions hold the same document that the API saves (take() in
+-- BACKEND-ARQUILA/app/services/project_snapshot.py), so the panel can list and restore them:
+-- for each row, the columns of its SQLAlchemy model (the table also has audit columns that the
+-- model leaves out, and restoring a version with them would fail), without the id or the link to
+-- the parent, with NUMERIC values as text, and the rows in id order. The functions are temporary:
+-- they disappear when the session that loads the seed ends.
+CREATE FUNCTION pg_temp.snapshot_values(source regclass, row_data jsonb, keys text[])
+RETURNS jsonb
+LANGUAGE sql STABLE
+AS $$
+    SELECT coalesce(
+        jsonb_object_agg(
+            a.attname,
+            CASE
+                WHEN a.atttypid = 'numeric'::regtype AND jsonb_typeof(row_data -> a.attname) = 'number'
+                    THEN to_jsonb(row_data ->> a.attname)
+                -- PostgreSQL drops the trailing zeros of the microseconds; isoformat() in Python
+                -- writes all six, or none when they are zero.
+                WHEN a.atttypid = 'timestamp'::regtype AND jsonb_typeof(row_data -> a.attname) = 'string'
+                    THEN to_jsonb(
+                        to_char((row_data ->> a.attname)::timestamp, 'YYYY-MM-DD"T"HH24:MI:SS')
+                        || CASE
+                               WHEN mod(extract(microseconds FROM (row_data ->> a.attname)::timestamp)::bigint, 1000000) <> 0
+                                   THEN to_char((row_data ->> a.attname)::timestamp, '.US')
+                               ELSE ''
+                           END
+                    )
+                ELSE row_data -> a.attname
+            END
+        ),
+        '{}'::jsonb
+    )
+    FROM pg_attribute a
+    WHERE a.attrelid = source
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND a.attname = ANY (keys)
+$$;
+
+CREATE FUNCTION pg_temp.project_snapshot(target integer)
+RETURNS jsonb
+LANGUAGE sql STABLE
+AS $$
+    SELECT jsonb_build_object(
+        'format', 1,
+        'project', jsonb_build_object(
+            'description', p.description,
+            'location', p.location,
+            'roof', p.roof,
+            'progress', p.progress,
+            'cover_file_id', p.cover_file_id
+        ),
+        'terrains', coalesce((
+            SELECT jsonb_agg(
+                pg_temp.snapshot_values('terrains', to_jsonb(t), '{name,area_m2,width_m,length_m,slope_percent,soil_type,latitude,longitude,created_at}') || jsonb_build_object(
+                    'points', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('terrain_points', to_jsonb(tp), '{position,x_m,y_m}')
+                                         ORDER BY tp.position)
+                        FROM terrain_points tp
+                        WHERE tp.terrain_id = t.id
+                    ), '[]'::jsonb)
+                )
+                ORDER BY t.id
+            )
+            FROM terrains t
+            WHERE t.project_id = p.id
+        ), '[]'::jsonb),
+        'plans', coalesce((
+            SELECT jsonb_agg(
+                pg_temp.snapshot_values('plans', to_jsonb(pl), '{file_id,title,level,scale,surface,created_at}') || jsonb_build_object(
+                    'rooms', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('rooms', to_jsonb(r), '{unit_id,name,category,mesh_ref,x_m,y_m,width_m,depth_m,height_m,surface,created_at}') ORDER BY r.id)
+                        FROM rooms r
+                        WHERE r.plan_id = pl.id
+                    ), '[]'::jsonb),
+                    'components', coalesce((
+                        SELECT jsonb_agg(pg_temp.snapshot_values('structural_components', to_jsonb(c), '{kind,name,x_m,y_m,width_m,depth_m,height_m,surface,created_at}')
+                                         ORDER BY c.id)
+                        FROM structural_components c
+                        WHERE c.plan_id = pl.id
+                    ), '[]'::jsonb)
+                )
+                ORDER BY pl.id
+            )
+            FROM plans pl
+            WHERE pl.project_id = p.id
+        ), '[]'::jsonb),
+        'materials', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('materials', to_jsonb(x), '{name,category,unit,quantity,unit_cost,created_at}') ORDER BY x.id)
+            FROM materials x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'elevations', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('elevations', to_jsonb(x), '{file_id,title,orientation,created_at}') ORDER BY x.id)
+            FROM elevations x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'tasks', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('tasks', to_jsonb(x), '{title,description,status,assignee_id,due_date,progress,created_by,created_at,updated_at}') ORDER BY x.id)
+            FROM tasks x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'walkthrough_points', coalesce((
+            SELECT jsonb_agg(pg_temp.snapshot_values('walkthrough_points', to_jsonb(x), '{name,position,target,sort_order,created_at,updated_at}') ORDER BY x.id)
+            FROM walkthrough_points x
+            WHERE x.project_id = p.id
+        ), '[]'::jsonb),
+        'scene_settings', (
+            SELECT pg_temp.snapshot_values('scene_settings', to_jsonb(s), '{lighting,camera_presets,created_at,updated_at}')
+            FROM scene_settings s
+            WHERE s.project_id = p.id
+        )
+    )
+    FROM projects p
+    WHERE p.id = target
+$$;
+
+-- The first version of Casa Los Arrayanes is the design before the interior work: no tasks yet,
+-- no progress, and only the materials of the first estimate.
+-- ON CONFLICT replaces only the versions without "format", the summaries that earlier seeds
+-- wrote, which the panel cannot open; a valid version is left as it is.
 INSERT INTO project_versions (project_id, version_number, label, snapshot, created_by)
 SELECT p.id, v.version_number, v.label,
-       jsonb_build_object(
-           'name', p.name,
-           'status', p.status,
-           'roof', p.roof,
-           'plans', (SELECT count(*) FROM plans x WHERE x.project_id = p.id),
-           'rooms', (SELECT count(*) FROM rooms x WHERE x.project_id = p.id),
-           'structural_components', (SELECT count(*) FROM structural_components x WHERE x.project_id = p.id),
-           'materials', (SELECT count(*) FROM materials x WHERE x.project_id = p.id)
-       ),
+       CASE
+           WHEN v.before_interior_work THEN
+               jsonb_set(
+                   jsonb_set(s.snapshot, '{project,progress}', '0'::jsonb) || '{"tasks": []}'::jsonb,
+                   '{materials}',
+                   coalesce((
+                       SELECT jsonb_agg(m.value ORDER BY m.position)
+                       FROM jsonb_array_elements(s.snapshot -> 'materials') WITH ORDINALITY AS m (value, position)
+                       WHERE m.value ->> 'name' NOT IN (
+                           'Puerta de madera', 'Cerámica de baño', 'Tubería PVC de 110 mm', 'Cable eléctrico n.º 12'
+                       )
+                   ), '[]'::jsonb)
+               )
+           ELSE s.snapshot
+       END,
        u.id
 FROM (
     VALUES
-        ('Casa Los Arrayanes', 1, 'Anteproyecto'),
-        ('Casa Los Arrayanes', 2, 'Remodelación interior'),
-        ('Edificio Mirador', 1, 'Primera distribución')
-) AS v (project, version_number, label)
+        ('Casa Los Arrayanes', 1, 'Anteproyecto', TRUE),
+        ('Casa Los Arrayanes', 2, 'Remodelación interior', FALSE),
+        ('Edificio Mirador', 1, 'Primera distribución', FALSE)
+) AS v (project, version_number, label, before_interior_work)
 JOIN projects p ON p.name = v.project
 JOIN users u ON u.id = p.owner_id AND u.email = 'demo@example.com'
-ON CONFLICT (project_id, version_number) DO NOTHING;
+CROSS JOIN LATERAL (SELECT pg_temp.project_snapshot(p.id) AS snapshot) AS s
+ON CONFLICT (project_id, version_number) DO UPDATE
+SET snapshot = EXCLUDED.snapshot
+WHERE NOT (project_versions.snapshot ? 'format');
 
 UPDATE projects p
 SET project_type = v.project_type,
