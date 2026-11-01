@@ -11,6 +11,8 @@ jobs:
   reset:
     name: Restore the demo data in production
     runs-on: ubuntu-latest
+    # Like deploy.yml: the job waits until a reviewer of the production environment approves it.
+    environment: production
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
     steps:
