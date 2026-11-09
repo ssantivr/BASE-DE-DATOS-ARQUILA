@@ -20,6 +20,7 @@ migrations/     Cambios del esquema, numerados y aplicados en orden
 seed.sql        Datos de ejemplo (opcional)
 scripts/init.sh Crea el esquema desde cero sin necesidad del backend
 scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
+scripts/check_migrations.sh Revisa el nombre y la numeración de las migraciones
 .env.example    Variable necesaria, sin valores reales
 ```
 
@@ -111,15 +112,19 @@ En la versión en línea lo ejecuta GitHub una vez al día (`.github/workflows/r
 
 ## Añadir una migración
 
-Crear un archivo nuevo en `migrations/` con el número siguiente (`010_descripcion.sql`). No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
+Crear un archivo nuevo en `migrations/` con el número siguiente (`016_descripcion.sql`). `bash scripts/check_migrations.sh` confirma que el nombre y la numeración son correctos. No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
 
 ## Comprobación automática
 
-En cada subida a `main` y en cada pull request, GitHub crea el esquema en un PostgreSQL 16 vacío con `scripts/init.sh --seed`, lo repite para comprobar que nada se aplica dos veces y verifica que quedaron anotadas todas las migraciones (`.github/workflows/ci.yml`).
+En cada subida a `main` y en cada pull request, GitHub revisa los nombres de las migraciones con `scripts/check_migrations.sh`, crea el esquema en un PostgreSQL 16 vacío con `scripts/init.sh --seed`, lo repite para comprobar que nada se aplica dos veces y verifica que quedaron anotadas todas las migraciones (`.github/workflows/ci.yml`).
 
 ## Publicación automática
 
-Al fusionar en `main` un cambio en `migrations/`, GitHub aplica las migraciones pendientes a la base de datos de producción con `scripts/init.sh` (`.github/workflows/deploy.yml`). La dirección de esa base está guardada como secreto cifrado del repositorio, `PRODUCTION_DATABASE_URL`, y no aparece en el código ni en los registros. No carga `seed.sql`.
+Al fusionar en `main` un cambio en `migrations/`, GitHub aplica las migraciones pendientes a la base de datos de producción con `scripts/init.sh` (`.github/workflows/deploy.yml`). La dirección de esa base está guardada como secreto cifrado del repositorio, `PRODUCTION_DATABASE_URL`, y no aparece en el código ni en los registros. No carga `seed.sql`. Antes de tocar producción, el mismo workflow aplica todas las migraciones en un PostgreSQL vacío; si alguna falla, no se despliega nada.
+
+### Base en Render
+
+El backend incluye un `render.yaml` que crea una base PostgreSQL en Render. Ese servicio descarga este repositorio al compilar y aplica las migraciones con `python -m app.migrate --seed` cada vez que arranca, así que no hace falta ejecutar `init.sh` a mano.
 
 Por eso el orden al cambiar el esquema es: primero se fusiona aquí la migración y después, en `BACKEND-ARQUILA`, el código que la usa.
 
