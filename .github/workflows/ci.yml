@@ -27,6 +27,8 @@ jobs:
       DATABASE_URL: postgresql+psycopg://arquila:arquila@localhost:5432/arquila_test
     steps:
       - uses: actions/checkout@v4
+      - name: Check the migration file names
+        run: bash scripts/check_migrations.sh
       - name: Create the schema and load the seed data
         run: bash scripts/init.sh --seed
       - name: Run it again to check that nothing is applied twice

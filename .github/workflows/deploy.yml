@@ -11,8 +11,35 @@ on:
 concurrency: production-database
 
 jobs:
+  validate:
+    name: Try the migrations on an empty database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: arquila_test
+          POSTGRES_USER: arquila
+          POSTGRES_PASSWORD: arquila
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arquila -d arquila_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://arquila:arquila@localhost:5432/arquila_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the migration file names
+        run: bash scripts/check_migrations.sh
+      - name: Apply every migration and the seed data
+        run: bash scripts/init.sh --seed
+
   migrate:
     name: Apply migrations to production
+    needs: validate
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
