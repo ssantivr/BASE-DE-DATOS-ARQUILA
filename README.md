@@ -52,6 +52,7 @@ scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
 | `025_project_type_and_stage.sql` | Tipo de proyecto y etapa de su ciclo de vida. |
 | `026_files_without_project.sql` | Archivos sin proyecto, para las fotos de perfil. |
 | `027_same_project_references.sql` | Claves foráneas compuestas: cada referencia apunta a una fila de su propio proyecto. |
+| `028_activity_log_audit.sql` | `activity_log.created_at` becomes `TIMESTAMPTZ` (UTC) and gains the audit columns `origin`, `source_module`, `old_value`, `new_value`. Rollback: `rollback/028_down.sql`. |
 
 ## Estructura general
 

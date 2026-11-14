@@ -138,6 +138,7 @@ Resultados medidos sobre una base creada con las migraciones 001 a 015.
 | `025_project_type_and_stage.sql` | `project_type` y `stage` en `projects`. Ver abajo. |
 | `026_files_without_project.sql` | `files.project_id` pasa a ser opcional, para las fotos de perfil. Ver abajo. |
 | `027_same_project_references.sql` | Claves foráneas compuestas que atan cada referencia a su proyecto. Ver abajo. |
+| `028_activity_log_audit.sql` | `activity_log.created_at` becomes `TIMESTAMPTZ` (UTC) and adds `origin` (`user`, `ai`, `system`), `source_module`, `old_value` and `new_value` (JSONB, only the fields that changed). Earlier rows keep those columns empty. Rollback: `rollback/028_down.sql`. |
 
 ### Cómo se rellenan los datos existentes
 

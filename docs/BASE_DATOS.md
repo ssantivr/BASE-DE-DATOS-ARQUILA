@@ -39,9 +39,14 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 024_scene_settings_and_walkthrough_points.sql
 │   ├── 025_project_type_and_stage.sql
 │   ├── 026_files_without_project.sql
-│   └── 027_same_project_references.sql
+│   ├── 027_same_project_references.sql
+│   └── 028_activity_log_audit.sql
+├── rollback/
+│   └── 028_down.sql
 └── seed.sql
 ```
+
+`rollback/` holds down scripts that are run by hand; `scripts/init.sh` never applies them.
 
 Las tablas añadidas por las migraciones 016 a 024 (tareas, versiones, actividad, notificaciones, preferencias, escena y puntos de recorrido), los cambios de 025 a 027 y la auditoría del esquema están en `docs/ESQUEMA.md`.
 
