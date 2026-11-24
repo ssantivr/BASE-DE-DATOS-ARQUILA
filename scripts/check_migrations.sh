@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Comprueba que las migraciones sigan el formato NNN_nombre.sql, sin números
-# repetidos ni saltos, para que init.sh las aplique siempre en el mismo orden.
+# Checks that the migrations are named NNN_name.sql, with no repeated or skipped
+# numbers, so that init.sh always applies them in the same order.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,7 +11,7 @@ for file in "$ROOT"/migrations/*.sql; do
     name="$(basename "$file")"
 
     if [[ ! "$name" =~ ^([0-9]{3})_[a-z0-9_]+\.sql$ ]]; then
-        echo "Nombre no válido: $name (formato esperado: 001_descripcion.sql)"
+        echo "Invalid name: $name (expected format: 001_description.sql)"
         status=1
         continue
     fi
@@ -19,12 +19,12 @@ for file in "$ROOT"/migrations/*.sql; do
     number=$((10#${BASH_REMATCH[1]}))
 
     if [ "$number" -ne "$expected" ]; then
-        printf 'Numeración incorrecta: %s (se esperaba %03d)\n' "$name" "$expected"
+        printf 'Wrong number: %s (expected %03d)\n' "$name" "$expected"
         status=1
     fi
 
     if [ ! -s "$file" ]; then
-        echo "Migración vacía: $name"
+        echo "Empty migration: $name"
         status=1
     fi
 
@@ -32,7 +32,7 @@ for file in "$ROOT"/migrations/*.sql; do
 done
 
 if [ "$status" -eq 0 ]; then
-    echo "Migraciones correctas: $((expected - 1))"
+    echo "Valid migrations: $((expected - 1))"
 fi
 
 exit "$status"

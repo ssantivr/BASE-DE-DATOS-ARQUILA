@@ -20,6 +20,9 @@ migrations/     Cambios del esquema, numerados y aplicados en orden
 seed.sql        Datos de ejemplo (opcional)
 scripts/init.sh Crea el esquema desde cero sin necesidad del backend
 scripts/reset_demo.sh Devuelve los datos de ejemplo a su estado original
+scripts/seed_demo_50.sh 50 proyectos de ejemplo, solo en local (docs/DEMO_DATA.md)
+seeds/          Datos que carga seed_demo_50.sh
+rollback/       Reverso de las migraciones, desde la 016
 scripts/check_migrations.sh Revisa el nombre y la numeración de las migraciones
 .env.example    Variable necesaria, sin valores reales
 ```
@@ -41,6 +44,8 @@ scripts/check_migrations.sh Revisa el nombre y la numeración de las migraciones
 | `013_properties_and_units.sql` | Propiedades y unidades, y en los cuartos la unidad, la categoría y la malla 3D. |
 | `014_spatial_elements.sql` | Elementos espaciales por capa (estructura, instalaciones, acabados) con su caja envolvente. |
 | `015_walkthrough_and_renovation.sql` | Pasos de la corrida de interior y registro de obras. |
+| `016_project_coordinates.sql` | Latitud, longitud y acercamiento del mapa de cada proyecto. |
+| `017_ai_extractions.sql` | Lo que la IA leyó en un PDF, PNG o JPEG y cómo deshacerlo. |
 
 ## Estructura general
 
@@ -112,7 +117,7 @@ En la versión en línea lo ejecuta GitHub una vez al día (`.github/workflows/r
 
 ## Añadir una migración
 
-Crear un archivo nuevo en `migrations/` con el número siguiente (`016_descripcion.sql`). `bash scripts/check_migrations.sh` confirma que el nombre y la numeración son correctos. No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
+Crear un archivo nuevo en `migrations/` con el número siguiente (`018_descripcion.sql`). `bash scripts/check_migrations.sh` confirma que el nombre y la numeración son correctos. No se modifican las migraciones ya aplicadas. El cambio equivalente en los modelos va en `app/models.py` del backend.
 
 ## Comprobación automática
 

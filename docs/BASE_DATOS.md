@@ -27,13 +27,18 @@ BASE-DE-DATOS-ARQUILA/
 │   ├── 012_roles_and_permissions.sql
 │   ├── 013_properties_and_units.sql
 │   ├── 014_spatial_elements.sql
-│   └── 015_walkthrough_and_renovation.sql
+│   ├── 015_walkthrough_and_renovation.sql
+│   ├── 016_project_coordinates.sql
+│   └── 017_ai_extractions.sql
 └── seed.sql
 ```
 
 ## Diagrama entidad-relación
 
-Las quince tablas y sus relaciones. Todo cuelga de `projects`, y cada proyecto de su dueño en `users`: al eliminar un proyecto se eliminan sus terrenos, planos, elevaciones, materiales, archivos, recomendaciones y conversaciones. Se omiten las columnas `created_at`, presentes en casi todas las tablas.
+Relaciones principales del esquema. Todo cuelga de `projects`, y cada proyecto de su dueño en
+`users`: al eliminar un proyecto se eliminan sus terrenos, planos, elevaciones, materiales,
+archivos, recomendaciones y conversaciones. Se omiten las columnas `created_at`, presentes en
+casi todas las tablas.
 
 ```mermaid
 erDiagram
@@ -41,6 +46,7 @@ erDiagram
     users ||--o{ password_reset_tokens : "solicita"
     users ||--o{ projects : "es dueño de"
     users ||--o{ ai_conversations : "abre"
+    users ||--o{ ai_extractions : "solicita"
     users |o--o{ files : "sube"
     projects ||--o{ terrains : "tiene"
     projects ||--o{ plans : "tiene"
@@ -49,6 +55,7 @@ erDiagram
     projects ||--o{ files : "guarda"
     projects ||--o{ recommendations : "recibe"
     projects ||--o{ ai_conversations : "tiene"
+    projects |o--o{ ai_extractions : "registra"
     projects ||--o{ rooms : "contiene"
     projects ||--o{ structural_components : "contiene"
     terrains ||--o{ terrain_points : "se delimita con"
@@ -58,6 +65,7 @@ erDiagram
     files |o--o{ elevations : "se adjunta a"
     ai_conversations ||--o{ ai_messages : "contiene"
     files ||--o| file_contents : "guarda su contenido en"
+    files |o--o{ ai_extractions : "se analiza"
 
     users {
         int id PK
@@ -84,6 +92,9 @@ erDiagram
         string name
         text description
         string location
+        decimal latitude
+        decimal longitude
+        smallint location_zoom
         string status
         string roof
         datetime updated_at
@@ -192,6 +203,16 @@ erDiagram
         text content
         string source
     }
+    ai_extractions {
+        int id PK
+        int project_id FK
+        int file_id FK
+        int user_id FK
+        string status
+        text proposal
+        text snapshot
+        datetime created_at
+    }
 ```
 
 - Un archivo se puede adjuntar a varios planos o elevaciones; si se elimina, estos quedan sin archivo (`file_id` vacío) pero no se eliminan.
@@ -223,6 +244,19 @@ La tabla `rooms` gana `unit_id`, `category` y `mesh_ref`.
 - `seed.sql` crea los planos con un `ORDER BY` explícito: el modelo 3D apila los niveles en el orden en que se crearon los planos, y las alturas de los elementos espaciales y de las cámaras del recorrido son absolutas.
 - Los archivos de migración y `seed.sql` no pueden contener el signo de porcentaje: el backend los ejecuta con psycopg, que lo interpreta como marcador de parámetro.
 
+## Coordenadas del proyecto y lecturas de IA
+
+Las migraciones 016 y 017 completan el modelo actual:
+
+| Migración | Cambio | Comportamiento |
+|---|---|---|
+| `016_project_coordinates.sql` | Añade `latitude`, `longitude` y `location_zoom` a `projects`. | Latitud y longitud deben aparecer juntas y respetar sus rangos; el zoom va de 1 a 19. La etiqueta de ubicación existente se conserva. |
+| `017_ai_extractions.sql` | Añade `ai_extractions` para las propuestas leídas de PDF o imagen. | Guarda estado, propuesta y snapshot para revisión y deshacer. `project_id` y `file_id` pueden quedar vacíos al eliminar sus registros; `user_id` conserva la propiedad de la cuota. |
+
+El diagrama incluye ahora estas columnas y la tabla `ai_extractions`. No se necesita PostGIS para
+guardar coordenadas geográficas: se usan `NUMERIC` con precisión fija. Los vértices del terreno
+siguen siendo coordenadas locales en metros en `terrain_points`.
+
 ## Migraciones
 
 El esquema de la base de datos se define con archivos SQL numerados en `migrations/`. Cada archivo es un cambio y se aplica una sola vez, en orden.
@@ -240,7 +274,7 @@ El comando lee `DATABASE_URL` de `BACKEND-ARQUILA/.env`, el mismo archivo que us
 
 Con `python -m app.migrate --seed` se cargan además los datos de ejemplo de `seed.sql`: un usuario de demostración con tres proyectos, sus terrenos, planos, elevaciones, materiales y notas. «Casa Los Arrayanes» trae además 17 cuartos, 16 columnas y 8 vigas en sus dos plantas, y «Edificio Mirador» 16 cuartos y 24 columnas en cuatro pisos con cubierta plana, para que el modelo 3D se vea completo sin cargar nada a mano. «Cabaña Mindo» no tiene cuartos. Se puede ejecutar varias veces sin duplicar nada.
 
-El usuario de demostración es `demo@example.com` con contraseña `arquila-demo`. Es una credencial pública, pensada solo para desarrollo: no se debe cargar `seed.sql` en una base con datos reales ni en un servidor accesible desde internet.
+El usuario de demostración es solo para desarrollo local: no se debe cargar `seed.sql` en una base con datos reales ni en un servidor accesible desde internet.
 
 El script (`BACKEND-ARQUILA/app/migrate.py`) anota cada archivo aplicado en la tabla `schema_migrations`, y en cada ejecución aplica solo los que faltan. Cada migración corre dentro de una transacción: si falla, no queda anotada y el proceso se detiene.
 
